@@ -1,0 +1,43 @@
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.pytest_cache/
+
+# Environment variables / secrets
+.env
+
+# Database
+*.db
+*.sqlite3
+
+# Data (usually large, and can be regenerated)
+data/raw/*.csv
+data/processed/*.csv
+
+# Trained models (usually large, and can be regenerated)
+models/*.cbm
+models/*.pkl
+models/*.png
+models/*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
