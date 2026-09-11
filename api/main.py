@@ -117,7 +117,7 @@ def decide_limit_increase(
     db.add(log_entry)
     db.commit()
 
-    ood_warnings =check_out_of_distribution(df, training_df, OOD_CHECK_FEATURES)
+    ood_warnings = check_out_of_distribution(df, _training_df, OOD_CHECK_FEATURES)
     is_out_of_distribution = len(ood_warnings) > 0
     return DecisionOutput(
         customer_id=customer.customer_id,
