@@ -1,8 +1,8 @@
 import streamlit as st
 import requests
 import pandas as pd
-
-API_URL = "http://localhost:8000"
+import os
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="LimitIQ", layout="wide")
 st.title("LimitIQ — Causal Credit Limit Decisioning")
@@ -31,12 +31,12 @@ if st.session_state.token:
     with col1:
         customer_id = st.text_input("Customer ID", "CUST_000123")
         age = st.number_input("Age", 18, 90, 35)
-        income = st.number_input("Annual Income ($)", 10000, 500000, 65000)
+        income = st.number_input("Annual Income (₹)", 10000, 500000, 65000)
         credit_score = st.number_input("Credit Score", 300, 850, 690)
     with col2:
         months_on_book = st.number_input("Months on Book", 1, 300, 36)
-        current_limit = st.number_input("Current Limit ($)", 500, 100000, 5000)
-        avg_monthly_spend = st.number_input("Avg Monthly Spend ($)", 0, 50000, 1500)
+        current_limit = st.number_input("Current Limit (₹)", 500, 100000, 5000)
+        avg_monthly_spend = st.number_input("Avg Monthly Spend (₹)", 0, 50000, 1500)
         utilization_rate = st.slider("Utilization Rate", 0.0, 1.5, 0.4)
     with col3:
         num_late_payments_12m = st.number_input("Late Payments (12m)", 0, 12, 0)
@@ -75,9 +75,9 @@ if st.session_state.token:
 
             st.subheader("Expected Value Analysis")
             e1, e2, e3 = st.columns(3)
-            e1.metric("Expected Annual Benefit", f"${result['expected_annual_benefit']:,.2f}")
-            e2.metric("Expected Annual Cost", f"${result['expected_annual_cost']:,.2f}")
-            e3.metric("Net Expected Value", f"${result['net_expected_value']:,.2f}",
+            e1.metric("Expected Annual Benefit", f"₹{result['expected_annual_benefit']:,.2f}")
+            e2.metric("Expected Annual Cost", f"₹{result['expected_annual_cost']:,.2f}")
+            e3.metric("Net Expected Value", f"₹{result['net_expected_value']:,.2f}",
                     delta="Positive" if result['net_expected_value'] > 0 else "Negative")
 
             st.subheader("Top Factors (SHAP)")

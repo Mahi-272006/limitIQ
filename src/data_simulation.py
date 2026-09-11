@@ -13,10 +13,10 @@ np.random.seed(42)
 
 def simulate_data(n=50000):
     age = np.random.normal(40, 12, n).clip(18, 80)
-    income = np.random.lognormal(mean=10.8, sigma=0.4, size=n)
+    income = np.random.lognormal(mean=13.3, sigma=0.45, size=n)      # centers around ~6-8 lakh/year
+    current_limit = np.random.lognormal(mean=10.8, sigma=0.5, size=n)  # centers around ~50k-1 lakh limit
     credit_score = np.random.normal(680, 60, n).clip(300, 850)
     months_on_book = np.random.randint(1, 240, n)
-    current_limit = np.random.lognormal(mean=8.5, sigma=0.5, size=n)
     avg_monthly_spend = current_limit * np.random.beta(2, 5, n)
     utilization_rate = (avg_monthly_spend / current_limit).clip(0, 1.5)
     num_late_payments_12m = np.random.poisson(0.6, n)

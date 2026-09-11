@@ -13,33 +13,33 @@ from src.explain import check_out_of_distribution
 from src.config import PROFIT_MARGIN_ON_SPEND, LOSS_GIVEN_DEFAULT, MAX_ACCEPTABLE_RISK_INCREASE
 from src.config import OOD_CHECK_FEATURES
 # Five profiles spanning the risk spectrum, safest to riskiest
+# Five profiles spanning the risk spectrum, safest to riskiest (INR figures)
 SCENARIOS = [
-    {"label": "Very safe",    "age": 45, "income": 120000, "credit_score": 790, "months_on_book": 96,
-     "current_limit": 15000, "avg_monthly_spend": 3000, "utilization_rate": 0.20,
-     "num_late_payments_12m": 0, "debt_to_income": 0.10, "num_credit_inquiries_6m": 0,
-     "employment_status": "employed", "account_type": "premium", "limit_increase_treatment": 0},
+    {"label": "Very safe",    "age": 45, "income": 1200000, "credit_score": 790, "months_on_book": 96,
+    "current_limit": 120000, "avg_monthly_spend": 30000, "utilization_rate": 0.20,
+    "num_late_payments_12m": 0, "debt_to_income": 0.10, "num_credit_inquiries_6m": 0,
+    "employment_status": "employed", "account_type": "premium"},
 
-    {"label": "Safe",         "age": 35, "income": 65000, "credit_score": 690, "months_on_book": 36,
-     "current_limit": 5000, "avg_monthly_spend": 1500, "utilization_rate": 0.40,
+    {"label": "Safe",         "age": 35, "income": 900000, "credit_score": 690, "months_on_book": 36,
+     "current_limit": 60000, "avg_monthly_spend": 18000, "utilization_rate": 0.40,
      "num_late_payments_12m": 0, "debt_to_income": 0.25, "num_credit_inquiries_6m": 1,
-     "employment_status": "employed", "account_type": "standard", "limit_increase_treatment": 0},
+     "employment_status": "employed", "account_type": "standard"},
 
-    {"label": "Moderate",     "age": 30, "income": 45000, "credit_score": 630, "months_on_book": 18,
-     "current_limit": 3000, "avg_monthly_spend": 1200, "utilization_rate": 0.65,
+    {"label": "Moderate",     "age": 30, "income": 550000, "credit_score": 630, "months_on_book": 18,
+     "current_limit": 35000, "avg_monthly_spend": 14000, "utilization_rate": 0.65,
      "num_late_payments_12m": 1, "debt_to_income": 0.40, "num_credit_inquiries_6m": 2,
-     "employment_status": "employed", "account_type": "standard", "limit_increase_treatment": 0},
+     "employment_status": "employed", "account_type": "standard"},
 
-    {"label": "Risky",        "age": 27, "income": 32000, "credit_score": 580, "months_on_book": 8,
-     "current_limit": 2000, "avg_monthly_spend": 1400, "utilization_rate": 1.00,
+    {"label": "Risky",        "age": 27, "income": 350000, "credit_score": 580, "months_on_book": 8,
+     "current_limit": 20000, "avg_monthly_spend": 16000, "utilization_rate": 1.00,
      "num_late_payments_12m": 3, "debt_to_income": 0.55, "num_credit_inquiries_6m": 4,
-     "employment_status": "self_employed", "account_type": "standard", "limit_increase_treatment": 0},
+     "employment_status": "self_employed", "account_type": "standard"},
 
-    {"label": "Very risky",   "age": 24, "income": 22000, "credit_score": 520, "months_on_book": 4,
-     "current_limit": 1000, "avg_monthly_spend": 950, "utilization_rate": 1.30,
+    {"label": "Very risky",   "age": 24, "income": 220000, "credit_score": 520, "months_on_book": 4,
+     "current_limit": 10000, "avg_monthly_spend": 9500, "utilization_rate": 1.30,
      "num_late_payments_12m": 5, "debt_to_income": 0.65, "num_credit_inquiries_6m": 6,
-     "employment_status": "unemployed", "account_type": "standard", "limit_increase_treatment": 0},
+     "employment_status": "unemployed", "account_type": "standard"},
 ]
-
 
 def run_scenario(profile, model, platt, numeric_feats, cat_feats, training_df):
     df = pd.DataFrame([profile])
