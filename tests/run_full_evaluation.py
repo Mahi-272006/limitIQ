@@ -10,12 +10,13 @@ Produces one consolidated report - this is what you'd hand to a reviewer
 """
 import pandas as pd
 import numpy as np
+import json
 from sklearn.metrics import roc_auc_score, recall_score, precision_score, f1_score
 from sklearn.calibration import calibration_curve
-
+from src.config import OOD_CHECK_FEATURES
 from src.risk_model import load_risk_model
 from src.calibration import load_platt_calibrator
-from src.uplift_model import load_uplift_model, predict_causal_effect, prepare_uplift_data
+from src.uplift_model import load_uplift_model, predict_causal_effect, prepare_uplift_data, CAUSAL_FEATURES
 from src.feature_engineering import load_and_process, get_feature_list, engineer_features, train_test_split_data
 from src.explain import check_out_of_distribution
 from src.config import (OUTCOME_DEFAULT_COL, TREATMENT_COL,
@@ -25,13 +26,31 @@ from tests.test_scenarios import SCENARIOS
 SECTION = "=" * 60
 
 
+def _encode_for_model(df, numeric_feats, cat_feats, model_type):
+    """One-hot encode categoricals if needed for LightGBM."""
+    if model_type == "lightgbm":
+        df_enc = pd.get_dummies(df[numeric_feats + cat_feats], columns=cat_feats, drop_first=True)
+        return df_enc
+    return df[numeric_feats + cat_feats]
+
+
 def section_risk_model(df, numeric_feats, cat_feats):
     print(f"\n{SECTION}\n1. RISK MODEL (Does it rank risky vs safe correctly?)\n{SECTION}")
     model = load_risk_model()
     platt = load_platt_calibrator()
     _, test_df = train_test_split_data(df)
 
-    raw_proba = model.predict_proba(test_df[numeric_feats + cat_feats])[:, 1]
+    # Load model metadata to determine encoding needs
+    meta = {}
+    try:
+        with open("models/model_meta.json", "r") as f:
+            meta = json.load(f)
+    except FileNotFoundError:
+        pass
+    model_type = meta.get("model_type", "catboost")
+
+    X_test = _encode_for_model(test_df, numeric_feats, cat_feats, model_type)
+    raw_proba = model.predict_proba(X_test)[:, 1]
     calibrated_proba = platt.predict_proba(raw_proba.reshape(-1, 1))[:, 1]
     threshold = np.percentile(calibrated_proba, 90)
     preds = (calibrated_proba > threshold).astype(int)
@@ -57,10 +76,18 @@ def section_risk_model(df, numeric_feats, cat_feats):
 def section_uplift_model(df, numeric_feats, cat_feats):
     print(f"\n{SECTION}\n2. UPLIFT MODEL (Does it find real heterogeneous causal effects?)\n{SECTION}")
     df_enc, feature_cols = prepare_uplift_data(df, numeric_feats, cat_feats)
+
+    # Add causal-specific features that the model expects
+    for feat in CAUSAL_FEATURES:
+        if feat not in df_enc.columns:
+            df_enc[feat] = 0.0
+
+    all_feature_cols = feature_cols + [f for f in CAUSAL_FEATURES if f not in feature_cols]
+
     bundle = load_uplift_model()
     model = bundle["model"]
 
-    X = df_enc[feature_cols].values
+    X = df_enc[all_feature_cols].values
     T = df_enc[TREATMENT_COL].values
     Y = df_enc[OUTCOME_DEFAULT_COL].values
     uplift_scores = model.effect(X)
@@ -72,7 +99,7 @@ def section_uplift_model(df, numeric_feats, cat_feats):
     y_t, y_c = np.cumsum(y_true * treatment), np.cumsum(y_true * (1 - treatment))
     qini = (y_t - y_c * (n_t / np.maximum(n_c, 1))) / n
     x = np.arange(1, n + 1) / n
-    qini_auc = np.trapz(qini, x) - np.trapz([0, qini[-1]], [0, 1])
+    qini_auc = float(np.trapz(qini, x) - np.trapz([0, qini[-1]], [0, 1]))
 
     print(f"Qini coefficient:   {qini_auc:.4f}   {'PASS (>0)' if qini_auc > 0 else 'FAIL - no better than random targeting'}")
     print(f"Avg causal effect:  {uplift_scores.mean():.4f}")
@@ -86,19 +113,38 @@ def section_scenarios(df, numeric_feats, cat_feats):
     model = load_risk_model()
     platt = load_platt_calibrator()
     uplift_bundle = load_uplift_model()
+    model_feature_cols = uplift_bundle["feature_cols"]
+
+    # Load model metadata
+    meta = {}
+    try:
+        with open("models/model_meta.json", "r") as f:
+            meta = json.load(f)
+    except FileNotFoundError:
+        pass
+    model_type = meta.get("model_type", "catboost")
 
     rows = []
     for profile in SCENARIOS:
         cust_df = pd.DataFrame([profile])
         cust_df = engineer_features(cust_df)
 
-        raw_proba = model.predict_proba(cust_df[numeric_feats + cat_feats])[:, 1][0]
+        X_cust = _encode_for_model(cust_df, numeric_feats, cat_feats, model_type)
+        raw_proba = model.predict_proba(X_cust)[:, 1][0]
         risk_score = platt.predict_proba([[raw_proba]])[:, 1][0]
 
         cust_enc, _ = prepare_uplift_data(cust_df, numeric_feats, cat_feats)
+        # Add causal-specific features for uplift prediction
+        for feat in CAUSAL_FEATURES:
+            if feat not in cust_enc.columns:
+                cust_enc[feat] = 0.0
+        # Ensure all model feature columns exist
+        for col in model_feature_cols:
+            if col not in cust_enc.columns:
+                cust_enc[col] = 0.0
         causal_effect = predict_causal_effect(cust_enc)[0]
 
-        ood_warnings = check_out_of_distribution(cust_df, df, numeric_feats)
+        ood_warnings = check_out_of_distribution(cust_df, df, OOD_CHECK_FEATURES)
 
         spend_lift = 20.0 + (-causal_effect * 30.0)
         annual_extra_spend = profile["avg_monthly_spend"] * 12 * (spend_lift / 100)

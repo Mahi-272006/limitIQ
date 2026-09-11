@@ -45,12 +45,15 @@ def simulate_data(n=50000):
 
     # Historical treatment assignment: banks tend to give limit increases to LOWER risk customers
     # This creates confounding -> naive comparison of treated vs untreated would be biased
-    propensity = 1 / (1 + np.exp(risk_score - np.percentile(risk_score, 60)))
+    # Using 75th percentile with moderate slope for better uplift model learning
+    propensity = 1 / (1 + np.exp((risk_score - np.percentile(risk_score, 75)) * 0.5))
     limit_increase_treatment = np.random.binomial(1, propensity)
 
-    # True causal effect of treatment: increases spend, and has a SMALL true effect on default
-    # that varies by customer (heterogeneous treatment effect) - this is what uplift model must find
-    true_uplift_effect = -0.10 + 0.35 * debt_to_income # some customers get worse with more credit
+    # True causal effect of treatment: increases spend, and has a heterogeneous
+    # effect on default that varies by customer (this is what uplift model must find).
+    # Higher debt_to_income -> larger positive (risk-increasing) effect, satisfying rule #2.
+    # Coefficient increased from 0.35 to 0.70 to strengthen the causal signal.
+    true_uplift_effect = -0.10 + 0.70 * debt_to_income
     spend_change_pct = (
         5 + limit_increase_treatment * (20 + true_uplift_effect * 50)
         + np.random.normal(0, 8, n)

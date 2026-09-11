@@ -25,21 +25,13 @@ class DecisionOutput(BaseModel):
     predicted_spend_lift_pct: float
     recommendation: str
     top_reasons: dict
+    expected_annual_benefit: float
+    expected_annual_cost: float
+    net_expected_value: float
+    is_out_of_distribution: bool
+    ood_warnings: list[str]
 
 
 class Token(BaseModel):
     access_token: str
     token_type: str
-
-class DecisionOutput(BaseModel):
-    customer_id: str
-    baseline_risk_score: float
-    causal_effect_on_default: float
-    predicted_spend_lift_pct: float
-    expected_annual_benefit: float
-    expected_annual_cost: float
-    net_expected_value: float
-    recommendation: str
-    top_reasons: dict
-    is_out_of_distribution: bool
-    ood_warnings: list[str]

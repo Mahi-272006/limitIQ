@@ -1,9 +1,11 @@
+import json
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 import pandas as pd
 
 from src.calibration import load_platt_calibrator
+from src.config import OOD_CHECK_FEATURES
 
 from api.schemas import CustomerInput, DecisionOutput, Token
 from api.auth import authenticate_user, create_access_token, get_current_user
@@ -18,9 +20,16 @@ from src.feature_engineering import load_and_process
 
 app = FastAPI(title="LimitIQ - Causal Credit Limit Decisioning API", version="1.0.0")
 
-risk_model = load_risk_model()
-_training_df = load_and_process()
-platt_calibrator = load_platt_calibrator()
+risk_model = None
+_training_df = None
+platt_calibrator = None
+
+@app.on_event("startup")
+def load_models():
+    global risk_model, _training_df, platt_calibrator
+    risk_model = load_risk_model()
+    _training_df = load_and_process()
+    platt_calibrator = load_platt_calibrator()
 
 @app.post("/token", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -46,8 +55,22 @@ def decide_limit_increase(
     df = engineer_features(df)
     numeric_feats, cat_feats = get_feature_list()
 
+    # Determine model type for encoding
+    try:
+        with open("models/model_meta.json", "r") as f:
+            _meta = json.load(f)
+        _model_type = _meta.get("model_type", "catboost")
+    except FileNotFoundError:
+        _model_type = "catboost"
+
+    # One-hot encode for LightGBM
+    if _model_type == "lightgbm":
+        df_encoded = pd.get_dummies(df[numeric_feats + cat_feats], columns=cat_feats, drop_first=True)
+    else:
+        df_encoded = df[numeric_feats + cat_feats]
+
     # Baseline risk score
-    raw_risk_score = float(risk_model.predict_proba(df[numeric_feats + cat_feats])[:, 1][0])
+    raw_risk_score = float(risk_model.predict_proba(df_encoded)[:, 1][0])
     risk_score = float(platt_calibrator.predict_proba([[raw_risk_score]])[:, 1][0])
 
     # Causal effect estimate
@@ -57,7 +80,7 @@ def decide_limit_increase(
     # Simple spend-lift heuristic tied to the causal model's direction (placeholder business rule)
     predicted_spend_lift = 20.0 + (-causal_effect * 30.0)
 
-    # Explanation
+    # Explanation (uses CatBoost model which handles the raw features)
     shap_result = explain_prediction(df)
     top_reasons = {k: round(float(v), 4) for k, v in list(shap_result.items())[:5]}
 
@@ -94,7 +117,7 @@ def decide_limit_increase(
     db.add(log_entry)
     db.commit()
 
-    ood_warnings = check_out_of_distribution(df, _training_df, numeric_feats)
+    ood_warnings =check_out_of_distribution(df, training_df, OOD_CHECK_FEATURES)
     is_out_of_distribution = len(ood_warnings) > 0
     return DecisionOutput(
         customer_id=customer.customer_id,

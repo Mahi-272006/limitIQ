@@ -7,6 +7,8 @@ load_dotenv()
 DATA_RAW_PATH = "data/raw/credit_data.csv"
 DATA_PROCESSED_PATH = "data/processed/processed_data.csv"
 RISK_MODEL_PATH = "models/risk_model.cbm"
+RISK_MODEL_LIGHTGBM_PATH = "models/risk_model_lgbm.pkl"
+MODEL_META_PATH = "models/model_meta.json"
 UPLIFT_MODEL_PATH = "models/uplift_model.pkl"
 CALIBRATION_REPORT_PATH = "models/calibration_report.json"
 
@@ -44,3 +46,9 @@ CATEGORICAL_FEATURES = ["employment_status", "account_type"]
 TREATMENT_COL = "limit_increase_treatment"  # 1 = got a limit increase, 0 = didn't
 OUTCOME_DEFAULT_COL = "defaulted_next_12m"
 OUTCOME_SPEND_COL = "spend_change_pct"
+
+OOD_CHECK_FEATURES = [
+    "age", "income", "current_limit", "avg_monthly_spend",
+    "utilization_rate", "months_on_book", "num_late_payments_12m",
+    "credit_score", "debt_to_income", "num_credit_inquiries_6m",
+]
